@@ -1314,10 +1314,6 @@ export class CityScene {
       this.bx(0.8, 0.7, 0.22, '#b8bec7', 0, 0, 0, st);
       const top = this.mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.22, 14, 1, false, 0, Math.PI), '#b8bec7', 0, 0.7, 0, st); top.rotation.set(Math.PI / 2, 0, Math.PI / 2);
       this.bx(0.9, 0.06, 0.5, '#6f8f5f', 0, 0, 0.25, st);
-      const a = new THREE.Object3D(); a.position.y = 1.4; st.add(a);
-      const rip = this.div('rip hidden-until-zoom', `<b>RIP ${esc(e.agent.name)}</b><span>${esc(e.epitaph)}</span>`);
-      rip.onclick = () => this.opts.onAgent?.(e.sessionId);
-      this.label(this.graveLabels, rip, a, 0, 'fx', '__grave');
     });
   }
 

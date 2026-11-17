@@ -516,12 +516,11 @@ kbd { font-family: var(--f-mono); font-size: 11px; padding: 1px 6px; border-radi
 /* town additions */
 .city-labels > .chat { max-width: 220px; white-space: normal; font-size: 12.5px; font-weight: 700; background: #fff; color: #25303d; padding: 6px 10px; border-radius: 12px; box-shadow: 0 3px 0 #25303d22, 0 6px 14px #25303d22; }
 .city-labels > .chat::after { content: ""; position: absolute; left: calc(50% - 6px); bottom: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: #fff; }
-.grave-sign, .rip { pointer-events: auto; cursor: pointer; }
+.grave-sign { pointer-events: auto; cursor: pointer; }
 .graves { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .graves li { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
 .graves li:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
 .graves .epitaph { font-weight: 600; }
-.city-labels > .rip { display: flex; flex-direction: column; background: #fff; color: #25303d; border-radius: 8px; padding: 4px 8px; font-size: 11.5px; max-width: 180px; box-shadow: 0 3px 10px #0003; }
 .city-actions { position: absolute; z-index: 5; right: max(16px, env(safe-area-inset-right, 0px)); top: 16px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 32px); }
 .view-town .main:has(.panel) .city-actions { right: 408px; }
 .view-town .main:has(.panel) .city-tools { right: 408px; }
