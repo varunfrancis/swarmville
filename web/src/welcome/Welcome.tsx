@@ -311,6 +311,7 @@ function TabsCoach({ onDone, onSkip }: { onDone: () => void; onSkip: () => void 
       <ul className="wel-tabs">
         <li><b>Town</b> shows where work is happening.</li>
         <li><b>Crew</b> shows who needs you. Check it first.</li>
+        <li><b>Chats</b> lets you talk to any agent and answer their questions.</li>
       </ul>
       <div className="wel-foot"><SkipTour onSkip={onSkip} /><button type="button" className="btn dark" autoFocus onClick={onDone}>Got it</button></div>
     </div>
