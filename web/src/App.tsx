@@ -125,6 +125,8 @@ export function App() {
     setSel({ kind: s?.status === 'needs_input' ? 'ask' : 'agent', id });
   }, []);
   const selectProject = useCallback((id: string | null) => setSel(id ? { kind: 'project', id } : null), []);
+  // The Town header has no café or shipped chips, so don't leave their highlight on with no way to turn it off.
+  useEffect(() => { if (view === 'town' && (only === 'break' || only === 'shipped')) setOnly(null); }, [view, only]);
   const t = state?.totals;
   const focus = useMemo(() => {
     if (!state) return { sessions: null, projects: null, sessionProjects: new Set<string>() };
@@ -171,11 +173,12 @@ export function App() {
             <div className="summary" aria-live="polite">
               {counts.needs ? chip('needs', counts.needs, 'raised a hand', 'needs') : null}
               {chip('building', counts.building, 'building')}
-              {chip('break', counts.onBreak, 'on a coffee break')}
-              {chip('shipped', counts.shipped, 'shipped today')}
+              {/* The town already shows the café and finished buildings, so these stay off its header. */}
+              {view !== 'town' ? chip('break', counts.onBreak, 'on a coffee break') : null}
+              {view !== 'town' ? chip('shipped', counts.shipped, 'shipped today') : null}
               {state ? <ProjectPicker state={state} hidden={hidden} setHidden={setHidden} liveOnly={liveOnly} setLiveOnly={setLiveOnly} /> : null}
               <TourPill api={welcome} />
-              <span className="sum hide-sm"><b>{voice === 'plain' ? t.bricksToday.toLocaleString() : compact(t.tokensToday)}</b> {voice === 'plain' ? 'bricks laid' : 'tokens'}</span>
+              {view !== 'town' ? <span className="sum hide-sm"><b>{voice === 'plain' ? t.bricksToday.toLocaleString() : compact(t.tokensToday)}</b> {voice === 'plain' ? 'bricks laid' : 'tokens'}</span> : null}
             </div>
           ) : <div className="summary" />}
           <div className="bar-right">
@@ -185,9 +188,10 @@ export function App() {
                 Wallet: {inr(state.wallet.balance)} left{state.wallet.pending.length ? <span className="tab-badge" aria-label={`${state.wallet.pending.length} waiting for you`}>{state.wallet.pending.length}</span> : null}
               </button>
             ) : null}
-            {t ? <button className="link hide-sm" onClick={() => setSel(sel?.kind === 'cost' ? null : { kind: 'cost', id: '' })} aria-pressed={sel?.kind === 'cost'} title={costView === 'api' ? 'See which projects and agents spent it, at API prices' : PLAN_NOTE}>Today's cost: {priced(costView, t.costToday)}</button> : null}
+            {t ? <button className="link hide-sm hide-md" onClick={() => setSel(sel?.kind === 'cost' ? null : { kind: 'cost', id: '' })} aria-pressed={sel?.kind === 'cost'} title={costView === 'api' ? 'See which projects and agents spent it, at API prices' : PLAN_NOTE}>Today's cost: {priced(costView, t.costToday)}</button> : null}
             <button className={`ghost small music${sound.music ? ' on' : ''}`} onClick={() => setMusic(!sound.music)} aria-pressed={sound.music}
-              title={sound.music ? 'Background music is on. Click to turn it off' : 'Background music is off. Click to turn it on'}>{sound.music ? '♪ Music on' : '♪ Music off'}</button>
+              aria-label={sound.music ? 'Music on' : 'Music off'}
+              title={sound.music ? 'Background music is on. Click to turn it off' : 'Background music is off. Click to turn it on'}>♪<span className="hide-md">{sound.music ? ' Music on' : ' Music off'}</span></button>
             <button className="ghost small" onClick={theme.cycle} aria-label="Toggle day and night">{theme.dark ? 'Day' : 'Night'}</button>
             <button className="ghost small" onClick={() => setModal('settings')} aria-label="Settings">Settings</button>
             {state && conn === 'offline' ? <span className="conn-off" title="Swarmville isn’t running. Start it with `npm start`.">Offline</span> : null}
