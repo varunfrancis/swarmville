@@ -173,12 +173,13 @@ export function App() {
             <div className="summary" aria-live="polite">
               {counts.needs ? chip('needs', counts.needs, 'raised a hand', 'needs') : null}
               {chip('building', counts.building, 'building')}
-              {/* The town already shows the café and finished buildings, so these stay off its header. */}
-              {view !== 'town' ? chip('break', counts.onBreak, 'on a coffee break') : null}
-              {view !== 'town' ? chip('shipped', counts.shipped, 'shipped today') : null}
+              {/* The town already shows the café and finished buildings, so these stay off its header,
+                  and on other tabs they drop out in narrower windows (hide-md) so the bar keeps one row like the town's. */}
+              {view !== 'town' ? chip('break', counts.onBreak, 'on a coffee break', 'hide-md') : null}
+              {view !== 'town' ? chip('shipped', counts.shipped, 'shipped today', 'hide-md') : null}
               {state ? <ProjectPicker state={state} hidden={hidden} setHidden={setHidden} liveOnly={liveOnly} setLiveOnly={setLiveOnly} /> : null}
               <TourPill api={welcome} />
-              {view !== 'town' ? <span className="sum hide-sm"><b>{voice === 'plain' ? t.bricksToday.toLocaleString() : compact(t.tokensToday)}</b> {voice === 'plain' ? 'bricks laid' : 'tokens'}</span> : null}
+              {view !== 'town' ? <span className="sum hide-sm hide-md"><b>{voice === 'plain' ? t.bricksToday.toLocaleString() : compact(t.tokensToday)}</b> {voice === 'plain' ? 'bricks laid' : 'tokens'}</span> : null}
             </div>
           ) : <div className="summary" />}
           <div className="bar-right">
