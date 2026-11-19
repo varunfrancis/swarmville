@@ -195,6 +195,8 @@ export type StateView = {
   notes: CrewNote[];
   letGo: string[]; // finished jobs you chose not to pick back up (the Crew tab's Today list)
   ships: ShipView[]; // jobs sent back to finish with "Ship it"
+  /** The Feed tab's Done / Later marks (daemon/feed.ts). */
+  feed?: FeedMark[];
   totals: {
     live: number; running: number; needs: number; idle: number; doneToday: number; shippedToday: number;
     tokensToday: number; bricksToday: number; costToday: number; waitedTodayMs: number; peakToday: number;
@@ -319,3 +321,6 @@ export type ChatLine = { at: number; kind: 'you' | 'them' | 'tool' | 'done' | 'n
 /** Where a message typed in the town goes: Swarmville runs them, they're open in your terminal, they come back here, or nowhere (scheduled jobs). */
 export type ChatReach = 'here' | 'terminal' | 'resume' | 'none';
 export type ChatView = { runner: 'on' | 'off' | null; lines: ChatLine[]; reach: ChatReach; steers?: { at: number; text: string; delivered: boolean }[] };
+
+/** A post in the Feed tab you marked Done or Later. `key` is the version of the post it was made on: when the job moves on, the mark stops applying. */
+export type FeedMark = { id: string; key: string; status: 'done' | 'later'; at: number; until: number | null };

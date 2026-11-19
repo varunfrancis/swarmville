@@ -4,6 +4,8 @@ import { CrewView } from './views/CrewView.tsx';
 import { MedalToasts } from './crew/Leaderboard.tsx';
 import { AgentPanel } from './views/AgentPanel.tsx';
 import { Chats } from './views/Chats.tsx';
+import { Feed } from './views/Feed.tsx';
+import { feedPosts, waitingCount } from './feed.ts';
 import { chatsBadge, useSeen } from './chats.ts';
 import { AskPopup } from './views/AskPopup.tsx';
 import { ProjectPanel } from './ProjectPanel.tsx';
@@ -28,9 +30,9 @@ import { PipFavicon, townMood } from './crew/PipFavicon.tsx';
 import { useAgentSounds } from './crew/agentSounds.ts';
 import { shippedToday } from './crew/today.ts';
 
-type View = 'town' | 'crew' | 'chats';
+type View = 'town' | 'crew' | 'chats' | 'feed';
 // The Day tab is gone: old #day links land on Crew, at its Today section.
-const readView = (): View => (location.hash === '#crew' || location.hash === '#day' ? 'crew' : location.hash === '#chats' ? 'chats' : 'town');
+const readView = (): View => (location.hash === '#crew' || location.hash === '#day' ? 'crew' : location.hash === '#chats' ? 'chats' : location.hash === '#feed' ? 'feed' : 'town');
 const store = { get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} } };
 
 function useTheme() {
@@ -154,6 +156,8 @@ export function App() {
   const chip = (key: NonNullable<typeof only>, n: number, label: string, cls = '') => (
     <button className={`sum chip ${cls}${only === key ? ' on' : ''}`} aria-pressed={only === key} onClick={() => setOnly(only === key ? null : key)} title={only === key ? 'Show everyone' : `Highlight only these`}><b>{n}</b> {label}</button>
   );
+  // The Feed tab's badge: posts waiting on you that you haven't cleared.
+  const feedBadge = useMemo(() => state ? waitingCount(feedPosts(state.sessions, state.feed ?? [], Date.now())) : 0, [state]);
   const firstLaunch = state && !state.town.chosen;
 
   return (
@@ -167,6 +171,9 @@ export function App() {
             <button className={view === 'crew' ? 'on' : ''} onClick={() => go('crew')}>Crew</button>
             <button className={view === 'chats' ? 'on' : ''} onClick={() => go('chats')} title="Every agent on the left, the conversation on the right">
               Chats{badge ? <span className="tab-badge" aria-label={`${badge} need you or have new replies`}>{badge}</span> : null}
+            </button>
+            <button className={view === 'feed' ? 'on' : ''} onClick={() => go('feed')} title="Every job as a post: answer, approve or merge, then Done or Later">
+              Feed{feedBadge ? <span className="tab-badge" aria-label={`${feedBadge} waiting on you`}>{feedBadge}</span> : null}
             </button>
           </nav>
           {t ? (
@@ -203,6 +210,8 @@ export function App() {
             <div className="loading">{conn === 'offline' ? 'Can’t reach Swarmville on this machine. Start it with `npm start` (or `swarmville start`).' : 'Opening the town gates…'}</div>
           ) : view === 'town' ? (
             <CityView state={state} selected={sel?.kind === 'project' ? sel.id : null} onSelect={selectProject} onAgent={townAgent} onGraveyard={() => setSel({ kind: 'graveyard', id: '' })} onCafe={() => setSel({ kind: 'cafe', id: '' })} focus={townFocus} showLots={showLots} onToggleLots={() => setShowLots(!showLots)} bubble={bubble} dark={theme.dark} onShare={() => setModal('share')} tourFocus={welcome.active ? tourFocus : null} openAgentId={sel?.kind === 'agent' ? sel.id : null} />
+          ) : view === 'feed' ? (
+            <Feed state={state} openChat={expand} />
           ) : view === 'chats' ? (
             <Chats state={state} chatId={chatId} setChatId={setChatId} openProject={open.project}
               openAsk={(sid) => setSel({ kind: 'ask', id: sid })} openProfile={(sid) => setSel({ kind: 'agent', id: sid, tab: 'profile' })} />

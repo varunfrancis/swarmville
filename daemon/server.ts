@@ -22,6 +22,7 @@ import { plainNextOutcome } from './plain.ts';
 import { nameNextProject, nameProjectsBatch, renameProject, setTown, summarizeNextProject } from './naming.ts';
 import { intros, terminalIntro, writeIntros } from './intros.ts';
 import { groupDistricts } from './districts.ts';
+import { markFeed } from './feed.ts';
 import { addNote, dismissFlag, letGo, noteContext, notesPending, removeNote, writePendingMarker } from './crews.ts';
 import type { ChatLine, ChatReach, ChatView, Setup, StateView, Welcome } from './types.ts';
 import { mergeChat, transcriptChat, transcriptFile } from './chat.ts';
@@ -528,6 +529,16 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && /^\/api\/notes\/\d+\/remove$/.test(p)) { removeNote(db, Number(p.split('/')[3])); refresh(); return json(res, 200, { ok: true }); }
     if (req.method === 'POST' && p === '/api/crews/dismiss') { const body = await readJson(req); dismissFlag(db, String(body.projectId ?? '')); refresh(); return json(res, 200, { ok: true }); }
     if (req.method === 'POST' && p === '/api/today/letgo') { const body = await readJson(req); const id = String(body.id ?? ''); if (!id) return json(res, 400, { ok: false, message: 'Which job?' }); letGo(db, id, body.undo === true); refresh(); return json(res, 200, { ok: true }); }
+    if (req.method === 'POST' && p === '/api/feed/mark') {
+      // The Feed tab: Done, Later, or Undo (status null) on one post.
+      const body = await readJson(req);
+      const id = String(body.id ?? ''), key = String(body.key ?? '');
+      const status = body.status === 'done' || body.status === 'later' ? body.status : null;
+      if (!id || !key) return json(res, 400, { ok: false, message: 'Which post?' });
+      markFeed(db, id, key, status);
+      refresh();
+      return json(res, 200, { ok: true });
+    }
     if (req.method === 'POST' && p.startsWith('/api/ship/')) {
       const [id, action] = decodeURIComponent(p.slice('/api/ship/'.length)).split('/');
       if (!id) return json(res, 400, { ok: false, message: 'Which job?' });
