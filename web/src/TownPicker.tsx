@@ -3,6 +3,8 @@ import type { StateView } from '../../daemon/types.ts';
 import { post } from './useSwarmville.ts';
 import { setChime, setMusic, setVoices, useSound } from './audio.ts';
 import type { Bubble, CostView, Voice } from './copy.ts';
+import { ProjectPicker, type ProjectFilter } from './ProjectPicker.tsx';
+import { inr } from './format.ts';
 
 /** First launch: name your town. Also used from Settings to rename it. */
 export function TownPicker({ state, onDone }: { state: StateView; onDone: () => void }) {
@@ -36,6 +38,9 @@ export type Prefs = {
   showLots: boolean; setShowLots: (b: boolean) => void;
 };
 
+/** What used to sit in the header: the Projects filter, the "building" highlight and the Wallet. */
+export type HeaderMoves = { projects: ProjectFilter; building: number; onlyBuilding: boolean; setOnlyBuilding: (b: boolean) => void; openWallet: () => void };
+
 function Seg<T extends string>({ label, value, set, options }: { label: string; value: T; set: (v: T) => void; options: [T, string][] }) {
   return (
     <div className="seg-toggle" role="group" aria-label={label}>
@@ -44,13 +49,20 @@ function Seg<T extends string>({ label, value, set, options }: { label: string; 
   );
 }
 
-export function Settings({ state, onClose, onSaved, renameTown, prefs, replayWelcome }: { state: StateView; onClose: () => void; onSaved: () => void; renameTown: () => void; prefs: Prefs; replayWelcome: () => void }) {
+export function Settings({ state, onClose, onSaved, renameTown, prefs, replayWelcome, moved }: { state: StateView; onClose: () => void; onSaved: () => void; renameTown: () => void; prefs: Prefs; replayWelcome: () => void; moved: HeaderMoves }) {
+  const wallet = state.wallet;
   const [intros, setIntros] = useState(state.settings.terminalIntros);
   const sound = useSound();
   return (
     <div className="modal-back" role="dialog" aria-modal="true" aria-labelledby="settings-title" onClick={onClose}>
       <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); onSaved(); }}>
         <h2 id="settings-title">Settings</h2>
+        <div className="setting col"><div><b>Projects</b><div className="muted">Which projects show in the town and the Crew tab. Hidden ones lose their name tag and crew.</div></div>
+          <ProjectPicker state={state} {...moved.projects} /></div>
+        <div className="setting"><div><b>Highlight who's building</b><div className="muted">{moved.building} {moved.building === 1 ? 'agent is' : 'agents are'} building right now. Turn on to dim everyone else.</div></div>
+          <label className="toggle"><input type="checkbox" checked={moved.onlyBuilding} onChange={(e) => moved.setOnlyBuilding(e.target.checked)} /> {moved.onlyBuilding ? 'On' : 'Off'}</label></div>
+        {wallet ? <div className="setting"><div><b>Wallet</b><div className="muted">{inr(wallet.balance)} left{wallet.pending.length ? `. ${wallet.pending.length} ${wallet.pending.length === 1 ? 'payment is' : 'payments are'} waiting for your OK.` : '. Your agents’ budgets and payments.'}</div></div>
+          <button type="button" className="ghost" onClick={moved.openWallet}>Open wallet{wallet.pending.length ? <span className="tab-badge">{wallet.pending.length}</span> : null}</button></div> : null}
         <div className="setting"><div><b>Language</b><div className="muted">Plain talks in bricks and buildings; Technical shows tokens and tool calls.</div></div>
           <Seg label="Language" value={prefs.voice} set={prefs.setVoice} options={[['plain', 'Plain'], ['technical', 'Technical']]} /></div>
         <div className="setting"><div><b>Cost</b><div className="muted">Claude Code runs on your Claude plan, so Swarmville shows $0 spent. API prices shows what the same work would cost if you paid per token.</div></div>

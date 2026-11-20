@@ -1632,3 +1632,6 @@ code.ask-detail { display: block; }
   .feed-post { padding: 14px 14px 8px; }
   .feed-post-row { gap: 10px; }
 }
+/* The Projects list inside Settings: the old header dropdown, shown open in place. */
+.picker-inline { position: static; width: auto; max-height: 240px; box-shadow: none; }
+.picker-inline > small { display: block; padding: 0 4px 6px; }
