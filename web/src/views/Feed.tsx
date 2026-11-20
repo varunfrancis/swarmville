@@ -5,6 +5,7 @@ import { GoTo } from '../components.tsx';
 import { ago } from '../format.ts';
 import { post, useNow } from '../useSwarmville.ts';
 import { AskBody, useAsk } from './AskPopup.tsx';
+import { Markdown } from './Markdown.tsx';
 import { CHIP, CHIP_LABEL, feedPosts, inFilter, oneTap, waitingCount, type FeedFilter, type FeedPost } from '../feed.ts';
 
 /*
@@ -147,7 +148,7 @@ function Post({ p, openChat, wallet, version }: { p: FeedPost; openChat: (id: st
 
           {p.own ? <>
             <button type="button" className="feed-own-toggle" aria-expanded={own} onClick={() => setOwn(!own)}><LinesIcon />{own ? 'Hide the agent’s own words' : 'Agent’s own words'}</button>
-            {own ? <div className="feed-own">{p.own}</div> : null}
+            {own ? <div className="feed-own"><Markdown text={p.own} /></div> : null}
           </> : null}
 
           {!since && options ? (
