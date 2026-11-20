@@ -12,6 +12,7 @@ import { routinesView } from './routines.ts';
 import { fallbackName, town } from './naming.ts';
 import { sizeFor } from './outcome.ts';
 import { crewsToday, letGoIds, notesView } from './crews.ts';
+import { feedMarks } from './feed.ts';
 import { shipsView } from './ship.ts';
 import { AWAY_AFTER_MS, isOwnRun, isThrowawayRun, RECENT_MS } from './config.ts';
 import type { Agent, AgentDetail, CostBreakdown, DayView, GraveEntry, ProjectDetail, ProjectView, SessionView, Setup, StateView, TeamView, Welcome } from './types.ts';
@@ -361,6 +362,7 @@ export function buildState(db: Db, live: Map<string, LiveEntry>, now = Date.now(
     crews: crewsToday(db, todayRows, live, names, now),
     notes: notesView(db, names, now),
     letGo: letGoIds(db),
+    feed: feedMarks(db),
     ships: shipsView(db, (r) => sessionStatus(r, live.get(r.id), now), now),
     totals: {
       live: sessions.filter((s) => s.status !== 'ended').length,
