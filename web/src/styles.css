@@ -1651,3 +1651,6 @@ code.ask-detail { display: block; }
 }
 @media (max-width: 1100px) and (min-width: 721px) { .chats.nav-hidden.with-rail { grid-template-columns: 52px minmax(0, 1fr) 240px; } }
 @media (max-width: 720px) { .chats .nav-toggle { display: none; } }
+/* The Projects list inside Settings: the old header dropdown, shown open in place. */
+.picker-inline { position: static; width: auto; max-height: 240px; box-shadow: none; }
+.picker-inline > small { display: block; padding: 0 4px 6px; }

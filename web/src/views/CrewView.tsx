@@ -318,7 +318,7 @@ export function CrewView({ state, open, allBuildings }: { state: StateView; open
           <div className="grid routines">{state.routines.map((r) => <RoutineCard key={r.key} r={r} p={projects.get(r.projectId)} now={now} open={open} />)}</div>
         </Fold>
       ) : null}
-      <Fold id="town" title="The town" note={`${town.length} ${town.length === 1 ? 'building' : 'buildings'}${hiddenBuildings ? ` · ${hiddenBuildings} more hidden by the Projects filter` : ''}`}>
+      <Fold id="town" title="The town" note={`${town.length} ${town.length === 1 ? 'building' : 'buildings'}${hiddenBuildings ? ` · ${hiddenBuildings} more hidden in Settings → Projects` : ''}`}>
         <div className="ptable-wrap">
           <table className="ptable">
             <thead><tr><th>Building</th><th>Stage</th><th className="r">On site</th><th className="r">Shifts</th><th className="r">{voice === 'plain' ? 'Bricks' : 'Tokens'}</th><th className="r">Last work</th></tr></thead>
