@@ -1632,3 +1632,22 @@ code.ask-detail { display: block; }
   .feed-post { padding: 14px 14px 8px; }
   .feed-post-row { gap: 10px; }
 }
+
+/* Fold the left list away on Chats and Feed (the sidebar button at its top), leaving a slim strip to bring it back. */
+.nav-toggle { flex: none; width: 36px; height: 36px; display: inline-grid; place-items: center; border: 0; border-radius: 9px; background: none; color: var(--ink-3); cursor: pointer; }
+.nav-toggle:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.nav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chats-top-row { display: flex; align-items: center; gap: 6px; }
+.chats-top-row .chats-new { flex: 1; min-width: 0; }
+.feed-rail-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: -8px 0 6px; }
+.feed-rail-top .feed-label { padding-bottom: 0; }
+.feed.nav-hidden .feed-rail { flex: 0 0 auto; }
+.feed.nav-hidden .feed-rail > :not(.feed-rail-top), .feed.nav-hidden .feed-rail-top .feed-label { display: none; }
+@media (min-width: 721px) {
+  .chats.nav-hidden { grid-template-columns: 52px minmax(0, 1fr); }
+  .chats.nav-hidden.with-rail { grid-template-columns: 52px minmax(0, 1fr) 280px; }
+  .chats.nav-hidden .chats-top { padding: 12px 8px; align-items: center; }
+  .chats.nav-hidden .chats-new, .chats.nav-hidden .chats-find, .chats.nav-hidden .chats-list { display: none; }
+}
+@media (max-width: 1100px) and (min-width: 721px) { .chats.nav-hidden.with-rail { grid-template-columns: 52px minmax(0, 1fr) 240px; } }
+@media (max-width: 720px) { .chats .nav-toggle { display: none; } }

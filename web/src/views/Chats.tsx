@@ -3,7 +3,7 @@ import type { SessionView, StateView } from '../../../daemon/types.ts';
 import { AgentAvatar, moodFor } from '../crew/Avatar.tsx';
 import { useVoice } from '../copy.ts';
 import { ago, tildify } from '../format.ts';
-import { GoTo, PrChip } from '../components.tsx';
+import { GoTo, NavToggle, PrChip, useNavHidden } from '../components.tsx';
 import { useNow } from '../useSwarmville.ts';
 import { chatPreview, chatProjects, chatTask, isUnread, useSeen, type ChatProject } from '../chats.ts';
 import { StartWork } from '../welcome/StartWork.tsx';
@@ -34,6 +34,7 @@ export function Chats({ state, chatId, setChatId, openProject, openAsk, openProf
   const [mode, setMode] = useState<'chat' | 'new'>('chat');
   const [reading, setReading] = useState(!!chatId); // phones: the list, or one conversation
   const [rail, setRail] = useState(store.get(RAIL_KEY) === '1');
+  const [navHidden, toggleNav] = useNavHidden('swarmville.chatsNavHidden');
   const [folds, setFoldsRaw] = useState<Folds>(() => readJson<Folds>(FOLD_KEY, { done: true }));
   const setFolds = (f: Folds) => { setFoldsRaw(f); store.set(FOLD_KEY, JSON.stringify(f)); };
   const [newIn, setNewIn] = useState<string | null>(null); // Give a task, already in this project
@@ -83,10 +84,13 @@ export function Chats({ state, chatId, setChatId, openProject, openAsk, openProf
   );
 
   return (
-    <div className={`chats${reading ? ' reading' : ''}${rail && s && mode === 'chat' ? ' with-rail' : ''}`}>
+    <div className={`chats${reading ? ' reading' : ''}${rail && s && mode === 'chat' ? ' with-rail' : ''}${navHidden ? ' nav-hidden' : ''}`}>
       <aside className="chats-side" aria-label="Agents">
         <div className="chats-top">
-          <button type="button" className={`btn chats-new${mode === 'new' ? ' on' : ''}`} onClick={() => newTask(null)}>＋ Give a task</button>
+          <div className="chats-top-row">
+            <button type="button" className={`btn chats-new${mode === 'new' ? ' on' : ''}`} onClick={() => newTask(null)}>＋ Give a task</button>
+            <NavToggle hidden={navHidden} onToggle={toggleNav} />
+          </div>
           <label className="chats-find" htmlFor="chats-find">
             <span aria-hidden>⌕</span>
             <input ref={find} id="chats-find" type="search" value={query} placeholder="Find a task or project" autoComplete="off"

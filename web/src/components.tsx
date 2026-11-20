@@ -104,3 +104,24 @@ export function Empty({ title, children }: { title: string; children?: React.Rea
     </div>
   );
 }
+
+/** Remembers whether a tab's left list is folded away (Chats and Feed each keep their own). */
+export function useNavHidden(key: string): [boolean, () => void] {
+  const read = () => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
+  const [hidden, setHidden] = useState(read);
+  const toggle = () => { const next = !hidden; setHidden(next); try { localStorage.setItem(key, next ? '1' : '0'); } catch {} };
+  return [hidden, toggle];
+}
+
+/** The small sidebar button that folds the left list away and brings it back. */
+export function NavToggle({ hidden, onToggle }: { hidden: boolean; onToggle: () => void }) {
+  const label = hidden ? 'Show the list' : 'Hide the list';
+  return (
+    <button type="button" className="nav-toggle" onClick={onToggle} aria-label={label} aria-expanded={!hidden} title={label}>
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+        <rect x="2" y="3" width="14" height="12" rx="2.5" /><path d="M7 3v12" />
+        {hidden ? <path d="M10.5 7.5 12 9l-1.5 1.5" strokeLinecap="round" strokeLinejoin="round" /> : <path d="M12 7.5 10.5 9 12 10.5" strokeLinecap="round" strokeLinejoin="round" />}
+      </svg>
+    </button>
+  );
+}
