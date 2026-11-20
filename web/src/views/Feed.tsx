@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChatLine, ChatView, SessionView, StateView } from '../../../daemon/types.ts';
 import { AgentAvatar, moodFor } from '../crew/Avatar.tsx';
-import { GoTo } from '../components.tsx';
+import { GoTo, NavToggle, useNavHidden } from '../components.tsx';
 import { ago } from '../format.ts';
 import { post, useNow } from '../useSwarmville.ts';
 import { AskBody, useAsk } from './AskPopup.tsx';
@@ -25,6 +25,7 @@ export function Feed({ state, openChat }: { state: StateView; openChat: (session
   const now = useNow(30_000);
   const [filter, setFilter] = useState<FeedFilter>('all');
   const [project, setProject] = useState<string | null>(null);
+  const [navHidden, toggleNav] = useNavHidden('swarmville.feedNavHidden');
   const names = useMemo(() => new Map(state.projects.map((p) => [p.id, p.name])), [state.projects]);
   const posts = useMemo(() => feedPosts(state.sessions.map((s) => ({ ...s, projectName: names.get(s.projectId ?? '') })), state.feed ?? [], now),
     [state.sessions, state.feed, names, now]);
@@ -40,9 +41,9 @@ export function Feed({ state, openChat }: { state: StateView; openChat: (session
   const waiting = waitingCount(inProject);
 
   return (
-    <div className="feed">
+    <div className={`feed${navHidden ? ' nav-hidden' : ''}`}>
       <aside className="feed-rail" aria-label="Filter the feed">
-        <div className="feed-label">Feed</div>
+        <div className="feed-rail-top"><div className="feed-label">Feed</div><NavToggle hidden={navHidden} onToggle={toggleNav} /></div>
         {FILTERS.map((f) => {
           const n = count(f.id);
           return (
