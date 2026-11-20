@@ -14,13 +14,12 @@ import { CafePanel } from './views/CafePanel.tsx';
 import { CostPanel } from './views/CostPanel.tsx';
 import { ShippedPanel } from './views/ShippedPanel.tsx';
 import { WalletPanel } from './views/Wallet.tsx';
-import { ProjectPicker } from './ProjectPicker.tsx';
 import { CityView } from './city/CityView.tsx';
 import { onBreak } from './city/liveJobs.ts';
 import { Settings, TownPicker } from './TownPicker.tsx';
 import { ShareSheet } from './share/ShareSheet.tsx';
 import { bricks, CostContext, PLAN_NOTE, priced, VoiceContext, type Bubble, type CostView, type Voice } from './copy.ts';
-import { compact, inr } from './format.ts';
+import { compact } from './format.ts';
 import { setMusic, useSound } from './audio.ts';
 import { TourPill, useWelcome, Welcome } from './welcome/Welcome.tsx';
 import { ArrivalToasts, Tips } from './welcome/Tips.tsx';
@@ -159,6 +158,7 @@ export function App() {
   // The Feed tab's badge: posts waiting on you that you haven't cleared.
   const feedBadge = useMemo(() => state ? waitingCount(feedPosts(state.sessions, state.feed ?? [], Date.now())) : 0, [state]);
   const firstLaunch = state && !state.town.chosen;
+  const walletDue = state?.wallet?.pending.length ?? 0;
 
   return (
     <VoiceContext.Provider value={voice}><CostContext.Provider value={costView}>
@@ -179,29 +179,22 @@ export function App() {
           {t ? (
             <div className="summary" aria-live="polite">
               {counts.needs ? chip('needs', counts.needs, 'raised a hand', 'needs') : null}
-              {chip('building', counts.building, 'building')}
               {/* The town already shows the café and finished buildings, so these stay off its header,
                   and on other tabs they drop out in narrower windows (hide-md) so the bar keeps one row like the town's. */}
               {view !== 'town' ? chip('break', counts.onBreak, 'on a coffee break', 'hide-md') : null}
               {view !== 'town' ? chip('shipped', counts.shipped, 'shipped today', 'hide-md') : null}
-              {state ? <ProjectPicker state={state} hidden={hidden} setHidden={setHidden} liveOnly={liveOnly} setLiveOnly={setLiveOnly} /> : null}
               <TourPill api={welcome} />
               {view !== 'town' ? <span className="sum hide-sm hide-md"><b>{voice === 'plain' ? t.bricksToday.toLocaleString() : compact(t.tokensToday)}</b> {voice === 'plain' ? 'bricks laid' : 'tokens'}</span> : null}
             </div>
           ) : <div className="summary" />}
           <div className="bar-right">
-            {state?.wallet ? (
-              <button className={`link hide-sm wallet-link${state.wallet.pending.length ? ' due' : ''}`} onClick={() => setSel(sel?.kind === 'wallet' ? null : { kind: 'wallet', id: '' })} aria-pressed={sel?.kind === 'wallet'}
-                title={state.wallet.pending.length ? 'Payments are waiting for your OK' : 'Your agents’ budgets and payments'}>
-                Wallet: {inr(state.wallet.balance)} left{state.wallet.pending.length ? <span className="tab-badge" aria-label={`${state.wallet.pending.length} waiting for you`}>{state.wallet.pending.length}</span> : null}
-              </button>
-            ) : null}
             {t ? <button className="link hide-sm hide-md" onClick={() => setSel(sel?.kind === 'cost' ? null : { kind: 'cost', id: '' })} aria-pressed={sel?.kind === 'cost'} title={costView === 'api' ? 'See which projects and agents spent it, at API prices' : PLAN_NOTE}>Today's cost: {priced(costView, t.costToday)}</button> : null}
             <button className={`ghost small music${sound.music ? ' on' : ''}`} onClick={() => setMusic(!sound.music)} aria-pressed={sound.music}
               aria-label={sound.music ? 'Music on' : 'Music off'}
               title={sound.music ? 'Background music is on. Click to turn it off' : 'Background music is off. Click to turn it on'}>♪<span className="hide-md">{sound.music ? ' Music on' : ' Music off'}</span></button>
             <button className="ghost small" onClick={theme.cycle} aria-label="Toggle day and night">{theme.dark ? 'Day' : 'Night'}</button>
-            <button className="ghost small" onClick={() => setModal('settings')} aria-label="Settings">Settings</button>
+            <button className="ghost small wallet-link" onClick={() => setModal('settings')} aria-label={walletDue ? `Settings, ${walletDue} payments waiting for your OK` : 'Settings'}
+              title={walletDue ? 'Payments are waiting for your OK (Settings → Wallet)' : undefined}>Settings{walletDue ? <span className="tab-badge">{walletDue}</span> : null}</button>
             {state && conn === 'offline' ? <span className="conn-off" title="Swarmville isn’t running. Start it with `npm start`.">Offline</span> : null}
           </div>
         </header>
@@ -231,7 +224,9 @@ export function App() {
           {state && !welcome.active ? <><Tips state={state} view={view} openAgent={open.agent} focusProject={(id) => { go('town'); open.project(id); }} /><ArrivalToasts state={state} openAgent={open.agent} /><MedalToasts state={state} openProject={open.project} /></> : null}
         </main>
         {state && ((firstLaunch && !welcome.active) || modal === 'town') ? <TownPicker state={state} onDone={() => setModal(null)} /> : null}
-        {state && modal === 'settings' ? <Settings state={state} onClose={() => setModal(null)} onSaved={() => { setModal(null); setSavedAt(Date.now()); }} renameTown={() => setModal('town')} prefs={{ voice, setVoice, costView, setCostView, bubble, setBubble, showLots, setShowLots }} replayWelcome={() => { setModal(null); setSel(null); welcome.replay(); }} /> : null}
+        {state && modal === 'settings' ? <Settings state={state} onClose={() => setModal(null)} onSaved={() => { setModal(null); setSavedAt(Date.now()); }} renameTown={() => setModal('town')} prefs={{ voice, setVoice, costView, setCostView, bubble, setBubble, showLots, setShowLots }} replayWelcome={() => { setModal(null); setSel(null); welcome.replay(); }}
+          moved={{ projects: { hidden, setHidden, liveOnly, setLiveOnly }, building: counts.building, onlyBuilding: only === 'building', setOnlyBuilding: (b) => setOnly(b ? 'building' : null),
+            openWallet: () => { setModal(null); setSel({ kind: 'wallet', id: '' }); } }} /> : null}
         {savedAt ? <SavedToast key={savedAt} message="Settings saved" onDone={() => setSavedAt(null)} /> : null}
         {state && modal === 'share' ? <ShareSheet state={state} onClose={() => setModal(null)} /> : null}
         {t && voice === 'plain' && view !== 'town' ? <div className="sr">{bricks(t.bricksToday)}</div> : null}
