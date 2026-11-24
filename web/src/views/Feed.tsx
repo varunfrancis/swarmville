@@ -6,7 +6,7 @@ import { ago } from '../format.ts';
 import { post, useNow } from '../useSwarmville.ts';
 import { AskBody, useAsk } from './AskPopup.tsx';
 import { Markdown } from './Markdown.tsx';
-import { CHIP, CHIP_LABEL, feedPosts, inFilter, oneTap, waitingCount, type FeedFilter, type FeedPost } from '../feed.ts';
+import { CHIP, CHIP_LABEL, WAITING, feedPosts, inFilter, oneTap, waitingCount, type FeedFilter, type FeedPost } from '../feed.ts';
 
 /*
  * The Feed tab: every job as a post you clear. Answer, approve or merge right on the post, reply in its box,
@@ -123,7 +123,7 @@ function Post({ p, openChat, wallet, version }: { p: FeedPost; openChat: (id: st
   const showAsk = !ask.done && (p.kind === 'plan' || p.kind === 'permission' || (p.kind === 'question' && !options));
 
   return (
-    <article className={`feed-post${chip === 'wait' || chip === 'plan' || chip === 'stuck' || chip === 'ready' ? ` hot c-${chip}` : ''}${p.mark ? ' cleared' : ''}`}>
+    <article className={`feed-post${WAITING.has(p.kind) ? ` hot c-${chip}` : ''}${p.mark ? ' cleared' : ''}`}>
       {p.repost ? <div className="feed-repost"><RepostIcon />{p.repost}</div> : null}
       <div className="feed-post-row">
         <AgentAvatar agent={s.agent} mood={moodFor(s)} size={44} />
@@ -139,11 +139,11 @@ function Post({ p, openChat, wallet, version }: { p: FeedPost; openChat: (id: st
           <p className="feed-text">{p.text}</p>
           {p.kind === 'working' ? <div className="feed-thinking"><span className="feed-live" aria-hidden="true" />{s.agent.name} is on it<span className="feed-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></div> : null}
 
-          {(p.kind === 'ready' || p.kind === 'failing') && s.prUrl ? (
+          {(p.kind === 'ready' || p.kind === 'failing' || p.kind === 'checks') && s.prUrl ? (
             <a className="feed-pr" href={s.prUrl} target="_blank" rel="noreferrer">
               <PrIcon />
               <span className="feed-pr-text"><b>{prName(s.prUrl)}</b><small>{s.filesChanged ? `${s.filesChanged} files · ` : ''}{s.linesAdded != null ? `+${s.linesAdded} −${s.linesRemoved ?? 0}` : 'Open on GitHub'}</small></span>
-              <span className={`feed-pr-state${p.kind === 'failing' ? ' bad' : ''}`}>{p.kind === 'failing' ? 'Checks failing' : s.prChecks === 'none' ? 'No checks' : 'Checks passed'}</span>
+              <span className={`feed-pr-state${p.kind !== 'ready' ? ' bad' : ''}`}>{p.kind !== 'ready' ? 'Checks failing' : s.prChecks === 'none' ? 'No checks' : 'Checks passed'}</span>
             </a>
           ) : null}
 
@@ -169,7 +169,7 @@ function Post({ p, openChat, wallet, version }: { p: FeedPost; openChat: (id: st
               <a className="feed-opt" href={s.prUrl!} target="_blank" rel="noreferrer">Look at it first</a>
             </div>
           ) : null}
-          {!since && p.kind === 'failing' ? (
+          {!since && (p.kind === 'failing' || p.kind === 'checks') ? (
             <div className="feed-options">
               <button type="button" className="feed-opt primary" disabled={busy} onClick={() => act(`/api/ship/${encodeURIComponent(s.id)}/fix`, 'Sent them to fix it.')}>Fix the checks</button>
             </div>
