@@ -26,6 +26,7 @@ test('each job makes one kind of post, or none', () => {
   assert.equal(postKind(mk({ status: 'needs_input', payment: { id: 'w1' } })), null, 'the Wallet answers payments');
   assert.equal(postKind(mk({ status: 'running', stuck: { count: 3, problem: 'npm test failed' } })), 'stuck');
   assert.equal(postKind(mk({ prUrl: 'https://github.com/a/b/pull/1', prState: 'open', prChecks: 'failing' })), 'failing');
+  assert.equal(postKind(mk({ status: 'ended', prUrl: 'https://github.com/a/b/pull/1', prState: 'open', prChecks: 'failing', outcome: 'Asked Nitin to merge it.' })), 'checks', 'a job that ended and handed off: red checks are news');
   assert.equal(postKind(mk({ prUrl: 'https://github.com/a/b/pull/1', prState: 'open', prChecks: 'passing', outcome: 'PR is up' })), 'ready');
   assert.equal(postKind(mk({ status: 'running', prUrl: 'https://github.com/a/b/pull/1', prState: 'open', prChecks: 'passing', outcome: 'x' })), 'working', 'not ready while they still work on it');
   assert.equal(postKind(mk({ prState: 'merged', outcome: 'Merged' })), 'shipped');
@@ -120,4 +121,13 @@ test('marks are kept in the database, replaced per post, and cleared by Undo', (
     assert.deepEqual(feedMarks(db).map((m) => m.id), ['s3']);
     db.close();
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('red checks on a job that ended don\'t wait on you, and aren\'t called stuck', () => {
+  const s = mk({ status: 'ended', endedAt: NOW - H, prUrl: 'https://github.com/a/b/pull/929', prState: 'open', prChecks: 'failing', outcome: 'Asked Nitin on Slack to merge PR #929.', plainOutcome: 'Nitin has been asked to merge it. Nothing is waiting on you.' });
+  const [p] = feedPosts([s], [], NOW);
+  assert.equal(p.kind, 'checks');
+  assert.equal(p.text, 'Nitin has been asked to merge it. Nothing is waiting on you.', 'the agent\'s own update, not a made-up "I\'m stuck"');
+  assert.equal(waitingCount([p]), 0);
+  assert.equal(inFilter(p, 'waiting', NOW), false);
 });

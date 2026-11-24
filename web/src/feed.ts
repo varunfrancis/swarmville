@@ -9,13 +9,13 @@ import { plainAction } from './copy.ts';
  * Pure functions, so the rules are easy to test. Agents at work don't post until they finish, ask or get stuck.
  */
 
-export type PostKind = 'question' | 'plan' | 'permission' | 'asked' | 'stuck' | 'failing' | 'ready' | 'working' | 'shipped' | 'finished';
-export type Chip = 'wait' | 'plan' | 'stuck' | 'ready' | 'run' | 'shipped' | 'finished';
+export type PostKind = 'question' | 'plan' | 'permission' | 'asked' | 'stuck' | 'failing' | 'checks' | 'ready' | 'working' | 'shipped' | 'finished';
+export type Chip = 'wait' | 'plan' | 'stuck' | 'red' | 'ready' | 'run' | 'shipped' | 'finished';
 export const CHIP: Record<PostKind, Chip> = {
-  question: 'wait', permission: 'wait', asked: 'wait', plan: 'plan', stuck: 'stuck', failing: 'stuck', ready: 'ready', working: 'run', shipped: 'shipped', finished: 'finished',
+  question: 'wait', permission: 'wait', asked: 'wait', plan: 'plan', stuck: 'stuck', failing: 'red', checks: 'red', ready: 'ready', working: 'run', shipped: 'shipped', finished: 'finished',
 };
 export const CHIP_LABEL: Record<Chip, string> = {
-  wait: 'Waiting on you', plan: 'Plan ready', stuck: 'Stuck', ready: 'Ready to merge', run: 'Working', shipped: 'Shipped', finished: 'Finished',
+  wait: 'Waiting on you', plan: 'Plan ready', stuck: 'Stuck', red: 'Checks failing', ready: 'Ready to merge', run: 'Working', shipped: 'Shipped', finished: 'Finished',
 };
 /** Kinds that wait on you: they count in the tab's badge and sit above the rest. */
 export const WAITING = new Set<PostKind>(['question', 'plan', 'permission', 'asked', 'stuck', 'failing', 'ready']);
@@ -52,7 +52,8 @@ export function postKind(s: S): PostKind | null {
     return 'asked';
   }
   if (s.stuck) return 'stuck';
-  if (prOpen(s) && s.prChecks === 'failing') return 'failing';
+  // red checks wait on you only while the agent is still around; once the job has ended (handed off, say) they're news
+  if (prOpen(s) && s.prChecks === 'failing') return s.status === 'ended' ? 'checks' : 'failing';
   if (s.status === 'running') return s.outcome ? 'working' : null;
   if (prOpen(s) && (s.prChecks === 'passing' || s.prChecks === 'none')) return 'ready';
   // still open and their last word was a question: it's your turn
@@ -76,7 +77,7 @@ export function postKey(s: S, kind: PostKind): string {
   switch (kind) {
     case 'question': case 'plan': case 'permission': return `${kind}:${s.ask?.id ?? ''}`;
     case 'stuck': return `stuck:${s.stuck?.count ?? 0}`;
-    case 'failing': case 'ready': return `${kind}:${s.prUrl}`;
+    case 'failing': case 'checks': case 'ready': return `${kind}:${s.prUrl}`;
     case 'working': return 'working';
     default: return `${kind}:${hash(s.outcome)}`;
   }
@@ -106,7 +107,7 @@ const lowerFirst = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
 export function repostReason(kind: PostKind, s: S): string {
   switch (kind) {
     case 'stuck': return `Reposted · still stuck after ${s.stuck?.count ?? 0} tries`;
-    case 'failing': return 'Reposted · checks are failing';
+    case 'failing': case 'checks': return 'Reposted · checks are failing';
     case 'ready': return 'Reposted · ready to merge now';
     case 'working': return 'Reposted · back at work';
     case 'shipped': case 'finished': return 'Reposted · new update';
