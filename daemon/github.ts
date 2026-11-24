@@ -20,7 +20,7 @@ export function listAccounts(): string[] {
 }
 
 const tokens = new Map<string, string>();
-function tokenFor(login: string): string | null {
+export function tokenFor(login: string): string | null {
   if (!tokens.has(login)) {
     const t = sh('gh', ['auth', 'token', '--hostname', 'github.com', '--user', login]).trim();
     if (/^(gh[opsu]_|github_pat_)/.test(t)) tokens.set(login, t);
@@ -37,6 +37,13 @@ async function gh(token: string, url: string, method = 'GET', body?: unknown): P
   });
   const next = res.headers.get('link')?.match(/<([^>]+)>;\s*rel="next"/)?.[1] ?? null;
   return { status: res.status, body: res.status === 204 ? null : await res.json().catch(() => null), next };
+}
+
+/** One GraphQL query with a login's token. Returns GitHub's whole answer ({ data, errors }); partial data still comes back. */
+export async function ghGraphql(token: string, query: string, variables: Record<string, unknown> = {}): Promise<any> {
+  const r = await gh(token, '/graphql', 'POST', { query, variables });
+  if (r.status !== 200) throw new Error(`GitHub returned ${r.status}`);
+  return r.body;
 }
 
 /** Pulls every repo each signed-in account can see and merges them into projects (keyed gh:owner/name). */
@@ -151,26 +158,32 @@ export type MergeResult = { ok: boolean; message: string };
  */
 export async function mergePullRequest(db: Db, sessionId: string): Promise<MergeResult> {
   const s = db.prepare('SELECT s.id, s.pr_url, p.gh_full, p.gh_account FROM sessions s JOIN projects p ON p.id = s.project_id WHERE s.id = ?').get(sessionId) as Row | undefined;
-  const num = s?.pr_url?.match(/\/pull\/(\d+)/)?.[1];
-  if (!s || !num || !s.gh_full) return { ok: false, message: 'Couldn’t find a review for this job.' };
-  const full = String(s.pr_url).match(/github\.com\/([^/]+\/[^/]+)\/pull\//)?.[1] ?? s.gh_full;
-  for (const login of new Set([s.gh_account, ...listAccountsCached()].filter(Boolean) as string[])) {
+  if (!s || !s.pr_url?.match(/\/pull\/(\d+)/) || !s.gh_full) return { ok: false, message: 'Couldn’t find a review for this job.' };
+  return mergeByUrl(db, s.pr_url, s.gh_account, s.gh_full);
+}
+
+/** The same "put it live", for any PR by its link (the PRs tab). Every job that points at this PR is marked merged. */
+export async function mergeByUrl(db: Db, prUrl: string, preferLogin?: string | null, fallbackFull?: string): Promise<MergeResult> {
+  const num = prUrl.match(/\/pull\/(\d+)/)?.[1];
+  const full = prUrl.match(/github\.com\/([^/]+\/[^/]+)\/pull\//)?.[1] ?? fallbackFull;
+  if (!num || !full) return { ok: false, message: 'That isn’t a GitHub PR link.' };
+  for (const login of new Set([preferLogin, ...listAccountsCached()].filter(Boolean) as string[])) {
     const token = tokenFor(login);
     if (!token) continue;
     const pr = await gh(token, `/repos/${full}/pulls/${num}`).catch(() => null);
     if (!pr || pr.status !== 200) continue;
     const b = pr.body;
-    if (b.merged_at) { markMerged(db, s.id, Date.parse(b.merged_at)); return { ok: true, message: 'It was already live.' }; }
+    if (b.merged_at) { markMerged(db, prUrl, Date.parse(b.merged_at)); return { ok: true, message: 'It was already live.' }; }
     if (b.state !== 'open') return { ok: false, message: 'This review was closed without going live.' };
     const checks = await checksFor(token, full, b.head.sha).catch(() => null);
-    db.prepare('UPDATE sessions SET pr_checks = ? WHERE id = ?').run(checks, s.id);
+    db.prepare('UPDATE sessions SET pr_checks = ? WHERE pr_url = ?').run(checks, prUrl);
     if (checks === 'failing') return { ok: false, message: 'Its checks are failing, so it can’t go live yet.' };
     if (checks === 'pending') return { ok: false, message: 'Its checks are still running. Try again when they pass.' };
     let last = '';
     for (const merge_method of ['squash', 'merge', 'rebase']) {
       const r = await gh(token, `/repos/${full}/pulls/${num}/merge`, 'PUT', { merge_method }).catch(() => null);
       if (r?.status === 200) {
-        markMerged(db, s.id, Date.now());
+        markMerged(db, prUrl, Date.now());
         // Tidy the branch away, as GitHub's own "delete branch" does. Only for a branch in this repo; failures don't matter.
         if (b.head?.repo?.full_name === b.base?.repo?.full_name && b.head?.ref) gh(token, `/repos/${full}/git/refs/heads/${encodeURIComponent(b.head.ref)}`, 'DELETE').catch(() => {});
         return { ok: true, message: 'It’s live.' };
@@ -185,12 +198,12 @@ export async function mergePullRequest(db: Db, sessionId: string): Promise<Merge
   return { ok: false, message: 'None of your GitHub logins can see this review. Check `gh auth status`.' };
 }
 
-function markMerged(db: Db, sessionId: string, at: number) {
-  db.prepare("UPDATE sessions SET pr_state = 'merged', pr_merged_at = ?, pr_checks = NULL, pr_checked_at = ?, stamp = CASE WHEN stamp IS NULL THEN NULL ELSE 'shipped' END WHERE id = ?").run(at, Date.now(), sessionId);
+function markMerged(db: Db, prUrl: string, at: number) {
+  db.prepare("UPDATE sessions SET pr_state = 'merged', pr_merged_at = ?, pr_checks = NULL, pr_checked_at = ?, stamp = CASE WHEN stamp IS NULL THEN NULL ELSE 'shipped' END WHERE pr_url = ?").run(at, Date.now(), prUrl);
 }
 
 let accountsCache: { at: number; list: string[] } = { at: 0, list: [] };
-function listAccountsCached() {
+export function listAccountsCached() {
   if (Date.now() - accountsCache.at > 10 * 60_000) accountsCache = { at: Date.now(), list: listAccounts() };
   return accountsCache.list;
 }

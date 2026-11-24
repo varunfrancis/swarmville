@@ -12,7 +12,9 @@ import { ancestry, readLive, type LiveEntry } from './live.ts';
 import { adoptLive, agentDetail, buildState, dayView, projectDetail, refreshAgents, teamView } from './state.ts';
 import { handleHook, lowerHand } from './hooks.ts';
 import { stopProcess, systemDeps } from './stop.ts';
-import { checkPullRequests, mergePullRequest, syncGithub } from './github.ts';
+import { checkPullRequests, mergeByUrl, mergePullRequest, syncGithub } from './github.ts';
+import { fetchBoard, normUrl, readyCount } from './prs.ts';
+import type { PrBoard } from './types.ts';
 import { clearShip, hotShipIds, shipBrief, startShip } from './ship.ts';
 import { notifyTransitions } from './notify.ts';
 import { stampClosed } from './outcome.ts';
@@ -42,6 +44,9 @@ const db = openDb();
 let live = new Map<string, LiveEntry>();
 let state!: StateView;
 let stateJson = '';
+/** The PRs tab's board (daemon/prs.ts), rebuilt from GitHub every few minutes by boardLoop. */
+let prBoard: PrBoard | null = null;
+let boardBusy: Promise<void> | null = null;
 let stateHash = '';
 const clients = new Set<http.ServerResponse>();
 const vscodeClients = new Set<http.ServerResponse>();
@@ -97,6 +102,7 @@ function refresh() {
   if (asks.size) for (const s of state.sessions) s.ask = s.status === 'needs_input' ? asks.get(s.id) ?? null : null;
   if (here.size) for (const s of state.sessions) { const r = here.get(s.id); if (r) s.runner = r; }
   try { applyWallet(db, state); } catch (e) { console.error('[swarmville] wallet view failed', e); }
+  state.prsReady = readyCount(prBoard);
   const { generatedAt, ...rest } = state;
   const hash = crypto.createHash('sha1').update(JSON.stringify(rest)).digest('hex');
   stateJson = JSON.stringify(state);
@@ -539,6 +545,25 @@ const server = http.createServer(async (req, res) => {
       refresh();
       return json(res, 200, { ok: true });
     }
+    if (p === '/api/prs') {
+      // The PRs tab. The first visit waits for GitHub; after that you get the last board while a fresh one loads.
+      if (!prBoard) await boardLoop();
+      else if (Date.now() - (prBoard.syncedAt ?? 0) > 60_000) boardLoop();
+      return json(res, 200, prBoard ?? { syncedAt: null, prs: [], errors: [] });
+    }
+    if (req.method === 'POST' && p === '/api/prs/merge') {
+      // Merge from the board: only a PR that's on it and ready, so this can't merge anything else.
+      const body = await readJson(req);
+      const want = normUrl(String(body.url ?? ''));
+      const pr = want ? prBoard?.prs.find((x) => normUrl(x.url) === want) : undefined;
+      if (!pr) return json(res, 200, { ok: false, message: 'That PR isn’t on your board any more. Refresh and try again.' });
+      if (pr.column !== 'ready') return json(res, 200, { ok: false, message: 'It isn’t ready to merge yet.' });
+      const r = await mergeByUrl(db, pr.url);
+      if (r.ok) { pr.column = 'merged'; pr.mergedAt = pr.updatedAt = Date.now(); pr.checks = null; }
+      refresh();
+      boardLoop();
+      return json(res, 200, r);
+    }
     if (req.method === 'POST' && p.startsWith('/api/ship/')) {
       const [id, action] = decodeURIComponent(p.slice('/api/ship/'.length)).split('/');
       if (!id) return json(res, 400, { ok: false, message: 'Which job?' });
@@ -706,6 +731,13 @@ async function githubLoop() {
 async function prLoop() {
   try { await checkPullRequests(db, new Set(live.keys()), hotShipIds(state.ships)); soon(); } catch (e) { console.error('[swarmville] PR check failed', e); }
 }
+/** Rebuilds the PRs tab's board from GitHub. Calls made while one is running share it. */
+function boardLoop(): Promise<void> {
+  boardBusy ??= fetchBoard(db).then((b) => { prBoard = b; soon(); })
+    .catch((e) => console.error('[swarmville] PR board failed', e))
+    .finally(() => { boardBusy = null; });
+  return boardBusy;
+}
 /** Keeps each live agent's "current job" label in step with your newest instruction. */
 async function focusLoop() {
   try { if (await labelNextFocus(db)) soon(); } catch (e) { console.error('[swarmville] job label failed', e); }
@@ -722,6 +754,8 @@ setInterval(githubLoop, 10 * 60_000);
 function startLoops() {
   setTimeout(prLoop, 5000);
   setInterval(prLoop, 30_000); // each review keeps its own pace (checkPullRequests): every 30s while shipping, minutes otherwise
+  setTimeout(boardLoop, 12_000);
+  setInterval(boardLoop, 4 * 60_000);
   if (!env('NO_NAMING')) { setTimeout(nameLoop, 8000); setInterval(nameLoop, 20_000); setInterval(focusLoop, 4000); setInterval(plainLoop, 10_000); }
 }
 
