@@ -197,6 +197,8 @@ export type StateView = {
   ships: ShipView[]; // jobs sent back to finish with "Ship it"
   /** The Feed tab's Done / Later marks (daemon/feed.ts). */
   feed?: FeedMark[];
+  /** PRs on the PRs tab that are ready to merge: its badge (daemon/prs.ts). */
+  prsReady?: number;
   totals: {
     live: number; running: number; needs: number; idle: number; doneToday: number; shippedToday: number;
     tokensToday: number; bricksToday: number; costToday: number; waitedTodayMs: number; peakToday: number;
@@ -324,3 +326,23 @@ export type ChatView = { runner: 'on' | 'off' | null; lines: ChatLine[]; reach: 
 
 /** A post in the Feed tab you marked Done or Later. `key` is the version of the post it was made on: when the job moves on, the mark stops applying. */
 export type FeedMark = { id: string; key: string; status: 'done' | 'later'; at: number; until: number | null };
+
+/** The PRs tab's columns, left to right. */
+export type PrColumn = 'draft' | 'fix' | 'review' | 'ready' | 'merged';
+/** The one thing wrong with a PR that its card names. */
+export type PrProblem = 'checks' | 'conflicts' | 'changes';
+export type BoardPr = {
+  url: string;
+  repo: string; // owner/name
+  number: number;
+  title: string; // without its "feat(x):" prefix
+  column: PrColumn;
+  problem: PrProblem | null;
+  checks: ChecksState | null;
+  review: 'approved' | 'needed' | 'changes' | null;
+  updatedAt: number;
+  mergedAt: number | null;
+  /** The agent's job that opened it, if one did. */
+  sessionId: string | null;
+};
+export type PrBoard = { syncedAt: number | null; prs: BoardPr[]; errors: string[] };

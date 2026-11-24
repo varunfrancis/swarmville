@@ -5,6 +5,7 @@ import { MedalToasts } from './crew/Leaderboard.tsx';
 import { AgentPanel } from './views/AgentPanel.tsx';
 import { Chats } from './views/Chats.tsx';
 import { Feed } from './views/Feed.tsx';
+import { Prs } from './views/Prs.tsx';
 import { feedPosts, waitingCount } from './feed.ts';
 import { chatsBadge, useSeen } from './chats.ts';
 import { AskPopup } from './views/AskPopup.tsx';
@@ -29,9 +30,9 @@ import { PipFavicon, townMood } from './crew/PipFavicon.tsx';
 import { useAgentSounds } from './crew/agentSounds.ts';
 import { shippedToday } from './crew/today.ts';
 
-type View = 'town' | 'crew' | 'chats' | 'feed';
+type View = 'town' | 'crew' | 'chats' | 'feed' | 'prs';
 // The Day tab is gone: old #day links land on Crew, at its Today section.
-const readView = (): View => (location.hash === '#crew' || location.hash === '#day' ? 'crew' : location.hash === '#chats' ? 'chats' : location.hash === '#feed' ? 'feed' : 'town');
+const readView = (): View => (location.hash === '#crew' || location.hash === '#day' ? 'crew' : location.hash === '#chats' ? 'chats' : location.hash === '#feed' ? 'feed' : location.hash === '#prs' ? 'prs' : 'town');
 const store = { get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} } };
 
 function useTheme() {
@@ -175,6 +176,9 @@ export function App() {
             <button className={view === 'feed' ? 'on' : ''} onClick={() => go('feed')} title="Every job as a post: answer, approve or merge, then Done or Later">
               Feed{feedBadge ? <span className="tab-badge" aria-label={`${feedBadge} waiting on you`}>{feedBadge}</span> : null}
             </button>
+            <button className={view === 'prs' ? 'on' : ''} onClick={() => go('prs')} title="Every PR you or your agents opened, by where it stands on GitHub">
+              PRs{state?.prsReady ? <span className="tab-badge" aria-label={`${state.prsReady} ready to merge`}>{state.prsReady}</span> : null}
+            </button>
           </nav>
           {t ? (
             <div className="summary" aria-live="polite">
@@ -205,6 +209,8 @@ export function App() {
             <CityView state={state} selected={sel?.kind === 'project' ? sel.id : null} onSelect={selectProject} onAgent={townAgent} onGraveyard={() => setSel({ kind: 'graveyard', id: '' })} onCafe={() => setSel({ kind: 'cafe', id: '' })} focus={townFocus} showLots={showLots} onToggleLots={() => setShowLots(!showLots)} bubble={bubble} dark={theme.dark} onShare={() => setModal('share')} tourFocus={welcome.active ? tourFocus : null} openAgentId={sel?.kind === 'agent' ? sel.id : null} />
           ) : view === 'feed' ? (
             <Feed state={state} openChat={expand} />
+          ) : view === 'prs' ? (
+            <Prs state={state} openChat={expand} />
           ) : view === 'chats' ? (
             <Chats state={state} chatId={chatId} setChatId={setChatId} openProject={open.project}
               openAsk={(sid) => setSel({ kind: 'ask', id: sid })} openProfile={(sid) => setSel({ kind: 'agent', id: sid, tab: 'profile' })} />
